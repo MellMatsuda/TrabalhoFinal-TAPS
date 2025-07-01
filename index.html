@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Cadastro de Pacientes</title>
+  <title>Cadastro de Pacientes com Strategy</title>
   <style>
     * {
       box-sizing: border-box;
@@ -60,7 +60,7 @@
       outline: none;
     }
 
-    button {
+    button, select {
       width: 100%;
       margin-top: 20px;
       padding: 12px;
@@ -74,7 +74,7 @@
       transition: background 0.3s;
     }
 
-    button:hover {
+    button:hover, select:hover {
       background-color: #2980b9;
     }
 
@@ -132,6 +132,13 @@
       <input type="text" id="condicao" placeholder="Digite a condição médica" />
 
       <button id="btnCadastrar">Cadastrar</button>
+
+      <label for="strategySelect">Modo de exibição:</label>
+      <select id="strategySelect">
+        <option value="simples">Simples</option>
+        <option value="ordenado">Ordenado por Nome</option>
+        <option value="filtrado">Filtrar condição: 'Diabetes'</option>
+      </select>
     </div>
 
     <div class="lista-box">
@@ -143,54 +150,91 @@
   </div>
 
   <script>
-    const pacientes = carregarPacientesSalvos();
+    // Dados dos pacientes
+    const pacientes = JSON.parse(localStorage.getItem("pacientes")) || [];
+
+    // Elementos do DOM
     const elementos = {
       nome: document.getElementById("nome"),
       idade: document.getElementById("idade"),
       condicao: document.getElementById("condicao"),
       lista: document.getElementById("lista"),
-      botao: document.getElementById("btnCadastrar")
+      botaoCadastrar: document.getElementById("btnCadastrar"),
+      selectStrategy: document.getElementById("strategySelect")
     };
 
-    inicializar();
-
-    function inicializar() {
-      elementos.botao.addEventListener("click", cadastrarPaciente);
-      exibirListaDePacientes();
+    // Estratégias para renderizar a lista
+    class ListaSimples {
+      render(pacientes, container) {
+        container.innerHTML = "";
+        pacientes.forEach(p => {
+          container.appendChild(this.criarCard(p));
+        });
+      }
+      criarCard(paciente) {
+        const div = document.createElement("div");
+        div.className = "paciente";
+        div.innerText = `${paciente.nome} (${paciente.idade} anos) - ${paciente.condicao}`;
+        return div;
+      }
     }
 
-    function carregarPacientesSalvos() {
-      return JSON.parse(localStorage.getItem("pacientes")) || [];
+    class ListaOrdenadaPorNome {
+      render(pacientes, container) {
+        const ordenados = [...pacientes].sort((a, b) => a.nome.localeCompare(b.nome));
+        container.innerHTML = "";
+        ordenados.forEach(p => {
+          container.appendChild(this.criarCard(p));
+        });
+      }
+      criarCard(paciente) {
+        const div = document.createElement("div");
+        div.className = "paciente";
+        div.innerText = `${paciente.nome} (${paciente.idade} anos) - ${paciente.condicao}`;
+        return div;
+      }
     }
 
+    class ListaFiltradaPorCondicao {
+      constructor(condicaoFiltro) {
+        this.condicaoFiltro = condicaoFiltro.toLowerCase();
+      }
+      render(pacientes, container) {
+        const filtrados = pacientes.filter(p => 
+          p.condicao.toLowerCase().includes(this.condicaoFiltro)
+        );
+        container.innerHTML = "";
+        filtrados.forEach(p => {
+          container.appendChild(this.criarCard(p));
+        });
+      }
+      criarCard(paciente) {
+        const div = document.createElement("div");
+        div.className = "paciente";
+        div.innerText = `${paciente.nome} (${paciente.idade} anos) - ${paciente.condicao}`;
+        return div;
+      }
+    }
+
+    // Contexto que utiliza a estratégia
+    class ListaPacientesContext {
+      constructor(strategy) {
+        this.strategy = strategy;
+      }
+      setStrategy(strategy) {
+        this.strategy = strategy;
+      }
+      render(pacientes, container) {
+        this.strategy.render(pacientes, container);
+      }
+    }
+
+    // Inicialização
+    let contextoLista = new ListaPacientesContext(new ListaSimples());
+
+    // Funções utilitárias
     function salvarPacientes() {
       localStorage.setItem("pacientes", JSON.stringify(pacientes));
-    }
-
-    function lerDadosDoFormulario() {
-      return {
-        nome: elementos.nome.value.trim(),
-        idade: elementos.idade.value.trim(),
-        condicao: elementos.condicao.value.trim()
-      };
-    }
-
-    function formularioValido(paciente) {
-      return paciente.nome && paciente.idade && paciente.condicao;
-    }
-
-    function cadastrarPaciente() {
-      const paciente = lerDadosDoFormulario();
-
-      if (!formularioValido(paciente)) {
-        alert("Preencha todos os campos!");
-        return;
-      }
-
-      pacientes.push(paciente);
-      salvarPacientes();
-      exibirListaDePacientes();
-      limparFormulario();
     }
 
     function limparFormulario() {
@@ -199,21 +243,57 @@
       elementos.condicao.value = "";
     }
 
-    function exibirListaDePacientes() {
-      elementos.lista.innerHTML = "";
-
-      pacientes.forEach(paciente => {
-        const card = criarCardDePaciente(paciente);
-        elementos.lista.appendChild(card);
-      });
+    function formularioValido(paciente) {
+      return paciente.nome && paciente.idade && paciente.condicao;
     }
 
-    function criarCardDePaciente(paciente) {
-      const div = document.createElement("div");
-      div.className = "paciente";
-      div.innerText = `${paciente.nome} (${paciente.idade} anos) - ${paciente.condicao}`;
-      return div;
+    function lerDadosFormulario() {
+      return {
+        nome: elementos.nome.value.trim(),
+        idade: elementos.idade.value.trim(),
+        condicao: elementos.condicao.value.trim()
+      };
     }
+
+    function cadastrarPaciente() {
+      const paciente = lerDadosFormulario();
+
+      if (!formularioValido(paciente)) {
+        alert("Preencha todos os campos!");
+        return;
+      }
+
+      pacientes.push(paciente);
+      salvarPacientes();
+      atualizarLista();
+      limparFormulario();
+    }
+
+    function atualizarLista() {
+      contextoLista.render(pacientes, elementos.lista);
+    }
+
+    // Event listeners
+    elementos.botaoCadastrar.addEventListener("click", cadastrarPaciente);
+
+    elementos.selectStrategy.addEventListener("change", (e) => {
+      const valor = e.target.value;
+      switch (valor) {
+        case "simples":
+          contextoLista.setStrategy(new ListaSimples());
+          break;
+        case "ordenado":
+          contextoLista.setStrategy(new ListaOrdenadaPorNome());
+          break;
+        case "filtrado":
+          contextoLista.setStrategy(new ListaFiltradaPorCondicao("Diabetes"));
+          break;
+      }
+      atualizarLista();
+    });
+
+    // Render inicial
+    atualizarLista();
   </script>
 </body>
 </html>
