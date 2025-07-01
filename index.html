@@ -79,47 +79,46 @@
     }
 
     .lista-box {
-        max-height: 500px;
-        overflow: hidden;
-        padding: 0;
-        border-radius: 12px;
-        background: #fff;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      max-height: 500px;
+      overflow: hidden;
+      padding: 0;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
     }
 
     .lista-scroll {
-        max-height: 500px;
-        overflow-y: auto;
-        padding: 0 20px;
+      max-height: 500px;
+      overflow-y: auto;
+      padding: 0 20px;
     }
 
     .lista-scroll h2 {
-        position: sticky;
-        top: 0;
-        background: #fff;
-        padding: 16px 0;
-        margin: 0 -20px 10px -20px;
-        z-index: 10;
-        text-align: center;
-        border-bottom: 1px solid #ccc;
-        font-size: 1.2rem;
-        color: #2c3e50;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      padding: 16px 0;
+      margin: 0 -20px 10px -20px;
+      z-index: 10;
+      text-align: center;
+      border-bottom: 1px solid #ccc;
+      font-size: 1.2rem;
+      color: #2c3e50;
     }
 
     .paciente {
-        background: #ecf0f1;
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        position: relative; /* para garantir sobreposição correta */
-        z-index: 1;
+      background: #ecf0f1;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      position: relative;
+      z-index: 1;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Coluna esquerda: formulário -->
     <div class="form-box">
       <h1>Cadastro de Pacientes</h1>
 
@@ -132,57 +131,89 @@
       <label for="condicao">Condição médica</label>
       <input type="text" id="condicao" placeholder="Digite a condição médica" />
 
-      <button onclick="cadastrar()">Cadastrar</button>
+      <button id="btnCadastrar">Cadastrar</button>
     </div>
 
-    <!-- Coluna direita: lista -->
     <div class="lista-box">
-        <div class="lista-scroll">
-            <h2>Lista de Pacientes</h2>
-            <div id="lista"></div>
-        </div>
+      <div class="lista-scroll">
+        <h2>Lista de Pacientes</h2>
+        <div id="lista"></div>
+      </div>
     </div>
   </div>
 
   <script>
-    const pacientes = JSON.parse(localStorage.getItem("pacientes")) || [];
+    const pacientes = carregarPacientesSalvos();
+    const elementos = {
+      nome: document.getElementById("nome"),
+      idade: document.getElementById("idade"),
+      condicao: document.getElementById("condicao"),
+      lista: document.getElementById("lista"),
+      botao: document.getElementById("btnCadastrar")
+    };
 
-    function cadastrar() {
-      const nome = document.getElementById("nome").value.trim();
-      const idade = document.getElementById("idade").value.trim();
-      const condicao = document.getElementById("condicao").value.trim();
+    inicializar();
 
-      if (!nome || !idade || !condicao) {
+    function inicializar() {
+      elementos.botao.addEventListener("click", cadastrarPaciente);
+      exibirListaDePacientes();
+    }
+
+    function carregarPacientesSalvos() {
+      return JSON.parse(localStorage.getItem("pacientes")) || [];
+    }
+
+    function salvarPacientes() {
+      localStorage.setItem("pacientes", JSON.stringify(pacientes));
+    }
+
+    function lerDadosDoFormulario() {
+      return {
+        nome: elementos.nome.value.trim(),
+        idade: elementos.idade.value.trim(),
+        condicao: elementos.condicao.value.trim()
+      };
+    }
+
+    function formularioValido(paciente) {
+      return paciente.nome && paciente.idade && paciente.condicao;
+    }
+
+    function cadastrarPaciente() {
+      const paciente = lerDadosDoFormulario();
+
+      if (!formularioValido(paciente)) {
         alert("Preencha todos os campos!");
         return;
       }
 
-      const paciente = { nome, idade, condicao };
       pacientes.push(paciente);
-      localStorage.setItem("pacientes", JSON.stringify(pacientes));
-      listar();
+      salvarPacientes();
+      exibirListaDePacientes();
       limparFormulario();
     }
 
-    function listar() {
-      const lista = document.getElementById("lista");
-      lista.innerHTML = "";
+    function limparFormulario() {
+      elementos.nome.value = "";
+      elementos.idade.value = "";
+      elementos.condicao.value = "";
+    }
 
-      pacientes.forEach(p => {
-        const div = document.createElement("div");
-        div.className = "paciente";
-        div.innerText = `${p.nome} (${p.idade} anos) - ${p.condicao}`;
-        lista.appendChild(div);
+    function exibirListaDePacientes() {
+      elementos.lista.innerHTML = "";
+
+      pacientes.forEach(paciente => {
+        const card = criarCardDePaciente(paciente);
+        elementos.lista.appendChild(card);
       });
     }
 
-    function limparFormulario() {
-      document.getElementById("nome").value = "";
-      document.getElementById("idade").value = "";
-      document.getElementById("condicao").value = "";
+    function criarCardDePaciente(paciente) {
+      const div = document.createElement("div");
+      div.className = "paciente";
+      div.innerText = `${paciente.nome} (${paciente.idade} anos) - ${paciente.condicao}`;
+      return div;
     }
-
-    listar();
   </script>
 </body>
 </html>
